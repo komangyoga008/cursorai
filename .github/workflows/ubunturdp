@@ -1,0 +1,61 @@
+
+name: CRD Remote Ubuntu
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget curl gdebi-core
+
+      - name: Install desktop environment
+        run: |
+          sudo apt-get install -y \
+            xfce4 \
+            xfce4-goodies \
+            dbus-x11 \
+            x11-xserver-utils
+
+      - name: Download Chrome Remote Desktop
+        run: |
+          wget -O crd.deb \
+            https://dl.google.com/linux/direct/chrome-remote-desktop_current_amd64.deb
+
+      - name: Install Chrome Remote Desktop
+        run: |
+          sudo apt-get install -y ./crd.deb
+
+      - name: Configure desktop session
+        run: |
+          echo "exec startxfce4" > ~/.chrome-remote-desktop-session
+
+      - name: Start Chrome Remote Desktop
+        env:
+          CRD_CODE: ${{ secrets.CRD_CODE }}
+        run: |
+          if [ -z "$CRD_CODE" ]; then
+            echo "CRD_CODE secret belum diatur."
+            exit 1
+          fi
+
+          /opt/google/chrome-remote-desktop/start-host \
+            --code="$CRD_CODE" \
+            --redirect-url="https://remotedesktop.google.com/_/oauthredirect" \
+            --name="GitHub-Ubuntu-Runner" \
+            --pin="123456"
+
+      - name: Keep Alive
+        run: |
+          for i in $(seq 1 360); do
+            sleep 60
+          done
